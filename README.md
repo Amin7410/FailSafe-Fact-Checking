@@ -89,11 +89,30 @@ Configuration is managed via `config.yaml`. Key parameters include:
 -   `llm.default_model`: Specifies the reasoning engine (e.g., `gemini-2.0-flash`).
 -   `vectordb.embedding_model`: Model used for semantic search (default: `intfloat/e5-base-v2`).
 
-## Contributing
+###  As a Python Library
 
-We adhere to standard open-source engineering practices.
--   **Tests**: All PRs must pass the status checks defined in `.github/workflows/`.
--   **Style**: Code should be typed (mypy) and linted (flake8).
+FailSafe can be easily integrated into your own Python projects:
+
+```python
+from factcheck import FactCheck
+
+# Initialize the system with default configuration
+fc = FactCheck.from_config()
+
+# Run the pipeline
+result = fc.check_text_with_progress("The Eiffel Tower is in Rome.")
+
+print(f"Verdict: {result['verdict']}")
+print(f"Summary: {result['summary']['message']}")
+```
+
+##  Contributing
+
+We welcome contributions! Please see our [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+##  Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=Amin7410/FailSafe-AI-Powered-Fact-Checking-System&type=Date)](https://star-history.com/#Amin7410/FailSafe-AI-Powered-Fact-Checking-System&Date)
 
 ## Acknowledgements
 
