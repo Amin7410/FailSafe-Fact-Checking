@@ -2,7 +2,7 @@
 
 anthropic
 backoff
-bs4
+
 flask
 httpx
 nltk
@@ -14,7 +14,7 @@ playwright_stealth
 tiktoken
 google-generativeai
 google-ai-generativelanguage
-langchain-google-genai
+
 Flask-Session
 chromadb
 sentence-transformers
@@ -38,3 +38,10 @@ python-dotenv
 beautifulsoup4
 requests
 trafilatura>=1.6.0
+openpyxl
+
+
+# Testing
+pytest
+pytest-mock
+pytest-asyncio

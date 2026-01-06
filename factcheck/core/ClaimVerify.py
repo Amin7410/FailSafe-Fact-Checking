@@ -10,6 +10,13 @@ logger = CustomLogger(__name__).getlog()
 
 
 class ClaimVerify:
+    """
+    The 'AI Council' Verification Engine.
+    
+    This module implements a multi-agent consensus system where different AI personas 
+    (Logician, Researcher, Skeptic) evaluate the relationship between a claim and 
+    retrieved evidence.
+    """
     def __init__(self, llm_client, prompt):
         self.llm_client = llm_client
         self.prompt = prompt
@@ -49,6 +56,10 @@ class ClaimVerify:
                     user_input = role_template.format(claim=claim, evidences_json=evidences_json_str)
                     all_prompts.append(user_input)
                     meta_map.append({"claim": claim, "role": role_name})
+            # Multi-Agent Debate:
+            # We use `multi_call` to send parallel requests for efficiency.
+            # Each agent (Logician, Researcher, Skeptic) analyzes the same claim-evidence pair
+            # from a different perspective to reduce bias and hallucination.
             logger.info(f"Council is debating... Sending {len(all_prompts)} requests.")
             messages_list = self.llm_client.construct_message_list(all_prompts)
             
@@ -87,6 +98,9 @@ class ClaimVerify:
                 original_evidences = claim_evidences_dict[claim]
                 final_evidence_objs = []
                 
+                # Consensus Voting:
+                # We aggregate the verdicts (SUPPORTS/REFUTES/IRRELEVANT) from all agents.
+                # The final relationship is determined by majority vote.
                 for j, evi_orig in enumerate(original_evidences):
                     e_id = f"E{j + 1}"
                     opinions = results_by_claim[claim].get(e_id, [])

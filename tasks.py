@@ -49,6 +49,15 @@ def get_factcheck_instance():
 
 @celery_app.task(bind=True)
 def run_fact_check_task(self, text_to_check: str):
+    """
+    The main asynchronous worker task.
+    
+    This function runs in a separate process (managed by Celery) to avoid blocking the Web Server.
+    It initializes the `FactCheck` pipeline and executes the check, reporting progress back to Redis.
+    
+    Args:
+        text_to_check (str): The raw input text/article to verify.
+    """
     instance = get_factcheck_instance()
     
     def update_progress(state, message, payload=None):

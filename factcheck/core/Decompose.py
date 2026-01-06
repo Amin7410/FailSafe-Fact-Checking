@@ -11,6 +11,14 @@ logger = CustomLogger(__name__).getlog()
 
 
 class Decompose:
+    """
+    Handles the decomposition of complex text into atomic claims using a Structured Argumentation Graph (SAG).
+    
+    This module performs three key functions:
+    1.  **SAG Creation**: Uses an LLM to parse text into a graph of claims and relationships.
+    2.  **Deduplication**: Uses Sentence Transformers (all-MiniLM-L6-v2) to merge semantically identical claims.
+    3.  **Restoration**: Maps extracted claims back to their exact span in the original text for highlighting.
+    """
     def __init__(self, llm_client, prompt):
         self.llm_client = llm_client
         self.prompt = prompt
@@ -62,6 +70,16 @@ class Decompose:
         return {"@context": "https://failsafe.factcheck.ai/ontology#", "@graph": []}
     
     def deduplicate_claims(self, claims: list[str], threshold: float = 0.85) -> list[str]:
+        """
+        Merges redundant claims using semantic similarity.
+        
+        Args:
+            claims: List of claim text strings.
+            threshold: Cosine similarity threshold (0.0 to 1.0). Claims with similarity > threshold are merged.
+            
+        Returns:
+            list[str]: A unique subset of claims.
+        """
         if not claims or len(claims) < 2 or self.embedder is None:
             return claims
 

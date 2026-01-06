@@ -6,6 +6,12 @@ logger = CustomLogger(__name__).getlog()
 
 
 class Checkworthy:
+    """
+    Filters claims to identify which ones contain verifiable factual assertions.
+    
+    This reduces pipeline costs by discarding subjective opinions, questions, or 
+    generic statements that cannot be fact-checked (e.g., "The movie was good").
+    """
     def __init__(self, llm_client, prompt):
         self.llm_client = llm_client
         self.prompt = prompt

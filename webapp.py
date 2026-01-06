@@ -12,6 +12,19 @@ from tasks import celery_app, run_fact_check_task
 from factcheck.utils.web_util import is_url, scrape_url_content
 
 
+def is_url(text: str) -> bool:
+    """Validates if the input string is a well-formed URL."""
+    return is_url(text)
+
+def scrape_url_content(url: str):
+    """
+    Fetches and extracts main text content from a URL.
+    
+    Uses Playwright/Trafilatura under the hood to handle dynamic JS rendering.
+    """
+    return scrape_url_content(url)
+
+
 app = Flask(__name__, static_folder="assets")
 
 app.logger.setLevel(logging.DEBUG)
@@ -64,6 +77,13 @@ app.jinja_env.filters['url_host'] = extract_hostname
 
 @app.route("/", methods=["GET", "POST"])
 def index():
+    """
+    Main Entry Point: The Landing Page.
+    
+    Methods:
+        GET: Renders the input form (input.html).
+        POST: Processes the user input (Text or URL) and initiates the async Celery task.
+    """
     if request.method == "POST":
         app.logger.info("=" * 20 + " NEW REQUEST " + "=" * 20)
         app.logger.debug(f"Received form data: {request.form}")
@@ -111,6 +131,16 @@ def loading_page(task_id):
 
 @app.route('/status/<task_id>')
 def task_status(task_id):
+    """
+    Polling Endpoint: Check the status of a background Fact-Check task.
+    
+    This endpoint is polled by the frontend JavaScript every 2 seconds to update the progress bar.
+    It returns a JSON object containing the current state ('PENDING', 'PROGRESS', 'SUCCESS', 'FAILURE')
+    and any intermediate events/logs.
+    
+    Args:
+        task_id (str): The Celery task ID.
+    """
     """
     Check the status of the Celery task.
     Updated to return 'info' payload for Streaming Progress (Optimization #5).

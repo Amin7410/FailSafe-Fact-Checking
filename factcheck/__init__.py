@@ -28,8 +28,15 @@ logger = CustomLogger(__name__).getlog()
 
 class FactCheck:
     """
-    Core Controller of the FailSafe System.
-    Refactored to use Dependency Injection.
+    The central coordinator of the FailSafe fact-checking pipeline.
+    
+    This class implements a multi-stage architecture:
+    1.  **Screening**: Quick metadata and stylometry checks to filter low-quality inputs.
+    2.  **Decomposition**: Breaks down text into a Structured Argumentation Graph (SAG).
+    3.  **Retrieval**: Fetches evidence from a local Knowledge Base (VectorDB) and External Search.
+    4.  **Verification**: Uses an "AI Council" approach to evaluate claims against evidence.
+    
+    It uses Dependency Injection for all sub-components to facilitate testing and modular upgrades.
     """
     def __init__(
         self,
@@ -96,6 +103,16 @@ class FactCheck:
                 component.llm_client.reset_usage()
 
     def _screen_input(self, raw_text: str):
+        """
+        Layer 0: Pre-computation Screening.
+        
+        Analyzes the text for inherent signals of misinformation (high sensationalism, 
+        low-trust domains) before engaging the expensive LLM pipeline.
+        
+        Returns:
+            should_exit (bool): True if the content is flagged as unsafe/spam.
+            analysis_data (dict): screening metrics.
+        """
         logger.info("--- Running Layer 0: Rapid Screening ---")
         metadata_result = self.metadata_analyzer.analyze(raw_text)
         style_result = self.stylometry_analyzer.analyze(raw_text)
@@ -105,6 +122,8 @@ class FactCheck:
 
         logger.info(f"Screening results: Trust={trust_level}, Sensationalism Score={sensationalism_score:.2f}")
 
+        # Heuristic: If source is explicitly low-trust AND writing style is highly sensational,
+        # we can short-circuit the process to save resources and warn the user immediately.
         if trust_level == 'low' and sensationalism_score > 0.5:
             warning_message = (
                 f"Early Warning: This content originates from a low-trust source "
@@ -257,6 +276,13 @@ class FactCheck:
             return output
         
     def check_text_with_progress(self, raw_text: str, progress_callback):
+        """
+        Executes the full fact-checking pipeline with real-time status reporting.
+        
+        Args:
+            raw_text: The input text to verify.
+            progress_callback: A function(state, message, payload) to emit events to the UI.
+        """
         self._reset_usage()
 
         progress_callback('PROGRESS', 'Step 1/5: Screening for obvious misinformation...')
@@ -274,9 +300,14 @@ class FactCheck:
         logger.info("--- Layer 0 passed. Proceeding with full pipeline. ---")
         st_time = time.time()
         
+        # 1. Coreference Resolution:
+        # Standardizes text (e.g., changing "he" to "Biden") to ensure claims are self-contained.
         logger.info("Resolving coreferences to improve context...")
         resolved_text = self.reference_resolver.resolve(raw_text)
         
+        # 2. SAG Construction:
+        # We assume the text contains a logical argument. We decompose it into a graph
+        # where nodes are claims and edges are relationships (support/attack).
         logger.info("Decomposing text into a Structured Argumentation Graph (SAG)...")
         sag_jsonld = self.decomposer.create_sag(
             doc=resolved_text, 
@@ -329,7 +360,9 @@ class FactCheck:
         progress_callback('PROGRESS', 'Step 2.8: Checking Knowledge Base for existing facts...')
         claims_to_process = []
         cached_results_map = {} 
-
+        
+        # Check local VectorDB first. If a semantically similar claim was verified recently,
+        # reusing the result saves time and Money.
         for claim in checkworthy_claims:
             cached_detail = self.knowledge_base.check_cache(claim)
             if cached_detail:
