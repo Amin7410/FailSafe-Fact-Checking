@@ -96,6 +96,25 @@ class FactCheck:
             claimverify=total_usage.get('claimverify')
         )
 
+    @classmethod
+    def from_config(cls, config_path: str = None, default_model: str = "gemini-2.5-flash", client: str = None):
+        """
+        Factory method to create a FactCheck instance from configuration.
+        
+        Args:
+            config_path: Path to the API config file. If None, uses default.
+            default_model: Name of the default LLM model to use.
+            client: Name of the LLM client (e.g., 'gemini', 'openai').
+            
+        Returns:
+            FactCheck: A fully initialized FactCheck instance.
+        """
+        return build_fact_check_system(
+            api_config_path=config_path,
+            default_model=default_model,
+            client=client
+        )
+
     def _reset_usage(self):
         """Reset token counters for a new request."""
         for component in self.llm_components.values():
