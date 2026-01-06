@@ -96,4 +96,4 @@ docker-compose.override.yml
 .coverage
 htmlcov/
 .pytest_cache/
-test/
+# test/
