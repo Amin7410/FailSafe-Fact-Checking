@@ -1,14 +1,14 @@
 
 import pytest
 from unittest.mock import MagicMock
-from factcheck.utils.llmclient.base import BaseLLMClient
+from factcheck.utils.llmclient.base import BaseClient
 
 @pytest.fixture
 def mock_llm_client():
     """
     Returns a MagicMock that mimics a Generic LLM Client.
     """
-    mock_client = MagicMock(spec=BaseLLMClient)
+    mock_client = MagicMock(spec=BaseClient)
     # Default behavior: return a simple string
     mock_client.call.return_value = "Mocked LLM Response"
     mock_client.construct_message_list.return_value = [{"role": "user", "content": "test"}]
