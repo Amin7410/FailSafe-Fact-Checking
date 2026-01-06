@@ -10,7 +10,8 @@ class TestDecompose:
     def decomposer(self, mock_llm_client):
         # We also need to mock the prompt handler since it loads files
         mock_prompt = MagicMock(spec=BasePrompt)
-        mock_prompt.decompose_prompt = "Mock Prompt Template {doc}"
+        mock_prompt.sag_prompt = "Mock SAG Prompt {doc}"
+        mock_prompt.restore_prompt = "Mock Restore {doc} {claims}"
         
         return Decompose(llm_client=mock_llm_client, prompt=mock_prompt)
 
