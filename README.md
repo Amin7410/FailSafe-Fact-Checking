@@ -1,3 +1,14 @@
+![Python](https://img.shields.io/badge/Python-3.9%2B-blue.svg?logo=python&logoColor=white)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+![Maintained](https://img.shields.io/badge/Maintained%3F-yes-green.svg)
+![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)
+
+![LangChain](https://img.shields.io/badge/LangChain-1C3C3C?style=flat&logo=LangChain&logoColor=white)
+![OpenAI](https://img.shields.io/badge/OpenAI-412991.svg?style=flat&logo=OpenAI&logoColor=white)
+![Google Gemini](https://img.shields.io/badge/Google%20Gemini-8E75B2?style=flat&logo=googlebard&logoColor=white)
+![Flask](https://img.shields.io/badge/Flask-000000?style=flat&logo=flask&logoColor=white)
+![Testing](https://img.shields.io/badge/Tested%20with-Pytest-yellowgreen)
+
 # FailSafe: Automated Fact-Checking System
 
 FailSafe is an open-source, modular framework designed to automate the verification of textual claims. It employs a multi-stage pipeline that integrates Large Language Models (LLMs) with retrieval-augmented generation (RAG) techniques to decompose complex arguments, retrieve high-quality evidence, and evaluate factuality with traceability.
