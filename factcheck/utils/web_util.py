@@ -6,6 +6,7 @@ import time
 import bs4
 import asyncio
 import re
+import urllib.parse
 from bs4 import BeautifulSoup
 from httpx import AsyncHTTPTransport
 from httpx._client import AsyncClient
@@ -29,6 +30,21 @@ def is_tag_visible(element: bs4.element) -> bool:
     ] or isinstance(element, bs4.element.Comment):
         return False
     return True
+
+
+def clean_text(text: str) -> str:
+    """Removes extra whitespace and newlines."""
+    if not text:
+        return ""
+    return " ".join(text.split())
+
+
+def extract_hostname(url: str) -> str:
+    """Extracts the hostname from a URL."""
+    try:
+        return urllib.parse.urlparse(url).netloc
+    except Exception:
+        return ""
 
 
 transport = AsyncHTTPTransport(retries=3)

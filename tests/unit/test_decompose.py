@@ -2,14 +2,14 @@
 import pytest
 from unittest.mock import MagicMock
 from factcheck.core.Decompose import Decompose
-from factcheck.utils.prompt import PromptHandler
+from factcheck.utils.prompt.base import BasePrompt
 
 class TestDecompose:
     
     @pytest.fixture
     def decomposer(self, mock_llm_client):
         # We also need to mock the prompt handler since it loads files
-        mock_prompt = MagicMock(spec=PromptHandler)
+        mock_prompt = MagicMock(spec=BasePrompt)
         mock_prompt.decompose_prompt = "Mock Prompt Template {doc}"
         
         return Decompose(llm_client=mock_llm_client, prompt=mock_prompt)
