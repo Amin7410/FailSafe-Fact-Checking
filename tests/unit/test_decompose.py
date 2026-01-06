@@ -22,8 +22,12 @@ class TestDecompose:
         valid_jsonld = '''
         {
             "@context": "https://schema.org",
-            "@type": "Claim",
-            "text": "The earth is flat."
+            "@graph": [
+                {
+                    "@type": "Claim",
+                    "label": "The earth is flat."
+                }
+            ]
         }
         '''
         decomposer.llm_client.call.return_value = f"```json\n{valid_jsonld}\n```"
@@ -33,8 +37,9 @@ class TestDecompose:
         
         # 3. Assess
         assert isinstance(result, dict)
-        assert result.get("@type") == "Claim"
-        assert result.get("text") == "The earth is flat."
+        graph = result.get("@graph")
+        assert len(graph) == 1
+        assert graph[0].get("label") == "The earth is flat."
         
         # Verify LLM was called
         decomposer.llm_client.call.assert_called_once()
@@ -45,12 +50,12 @@ class TestDecompose:
         # First call raises error (invalid json), second call succeeds
         decomposer.llm_client.call.side_effect = [
             "Invalid JSON",
-            '''{"@type": "Claim", "text": "Retry success"}'''
+            '''{"@graph": [{"label": "Retry success"}]}'''
         ]
         
         result = decomposer.create_sag("test doc", num_retries=2)
         
-        assert result.get("text") == "Retry success"
+        assert result.get("@graph")[0].get("label") == "Retry success"
         assert decomposer.llm_client.call.call_count == 2
 
     def test_deduplicate_claims(self, decomposer):
