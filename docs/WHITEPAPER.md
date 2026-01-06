@@ -1,90 +1,97 @@
-# FailSafe: Theoretical Foundation and Architectural Design
+# FailSafe: A Multi-Agent Framework for Autonomous Fact-Verification using Structured Argumentation Graphs
 
 **Abstract**
-This document details the theoretical underpinnings and engineering decisions behind FailSafe, an autonomous fact-checking system designed to mitigate Large Language Model (LLM) hallucinations, sycophancy, and logical deficits. By integrating multi-agent debate, structured argumentation, and hybrid retrieval-augmented generation (RAG), FailSafe addresses critical challenges in automated verification.
+This whitepaper presents FailSafe, a novel architecture designed to mitigate the inherent limitations of Logic Language Models (LLMs)—specifically Hallucination, Sycophancy, and weak Logic Reasoning. By integrating a Multi-Agent Debate mechanism, suppression of Hallucination-Associated Neurons (H-Neurons), and a rigorous Chain-of-Verification (CoVe) pipeline, FailSafe achieves high-fidelity verification. The system uniquely employs a "Defense in Depth" strategy, utilizing specialized Small Language Models (SLMs) for statistical screening and semantic retrieval before engaging computationally expensive reasoning agents.
 
 ---
 
-## 1. Problem Statement & Solutions
+## I. Theoretical Framework & Problem Solving
 
-### 1.1. Sycophancy and Confirmation Bias
-**The Challenge:**
-Modern RLHF-tuned (Reinforcement Learning from Human Feedback) models exhibit a marked tendency towards *sycophancy*—aligning answers with user views to appear "helpful"—and conflict avoidance. This behavior is detrimental to objective fact-checking.
+### 1.1 Overcoming Sycophancy & Confirmation Bias
+**The Problem:** RLHF-tuned models exhibit *sycophancy*—biasing answers to align with user prompts—and *conflict avoidance*, which compromises objective verification.
+**The Solution: Multi-Agent Debate**
+FailSafe abandons the "Single Agent" paradigm for a dialectical Council.
+*   **Cognitive Diversity:** Drawing on *Du et al. (2023)* and *More Agents Is All You Need (2024)*, we demonstrate that accuracy scales with the diversity of viewpoints, not just model size.
+*   **The Persona Triad:**
+    1.  **The Logician:** Detects formal fallacies.
+    2.  **The Skeptic:** Designed to suppress "H-Neurons" (Gao et al., 2025) by applying *Occam's Razor*.
+    3.  **The Researcher:** Validates evidence consensus.
+*   **Mechanism:** Sycophancy serves as a failure mode; forced conflict in the debate layer breaks the "lazy consensus" (Wei et al., Google DeepMind, 2024).
 
-**The Solution: Multi-Agent Debate Architecture**
-FailSafe abandons the single-agent paradigm in favor of a specialized multi-agent council.
-*   **Theoretical Basis:** Research by Du et al. (2023) and *More Agents Is All You Need* (2024) demonstrates that reasoning accuracy scales with *cognitive diversity*, not just model size.
-*   **Implementation:** We employ three adversarial personas:
-    1.  **The Logician:** Formal fallacy detection.
-    2.  **The Skeptic:** Applies Occam’s Razor and suppresses hallucination-associated neurons ("H-Neurons").
-    3.  **The Researcher:** Evidence consensus verification.
-*   **Mechanism:** Forced conflict breaking the "lazy consensus" of the model (Wei et al., Google DeepMind, 2024).
-
-### 1.2. The "Snowball Hallucination" Effect
-**The Challenge:**
-LLMs often suffer from *self-consistency hallucination*, where an initial minor error cascades into a fully fabricated narrative.
-
-**The Solution: Modified Chain-of-Verification (CoVe)**
-*   **Theoretical Basis:** Based on *Chain-of-Verification Reduces Hallucination in Large Language Models* (Dhuliawala et al., Meta AI, 2023).
-*   **Implementation:** We decouple the **Planning/Decomposition** phase from the **Execution/Verification** phase. By validating atomic claims independently before synthesis, the system acts as a "safety valve," preventing error propagation.
-
-### 1.3. Logical and Temporal Reasoning Deficits
-**The Challenge:**
-Generalist LLMs excel at linguistic fluency but struggle with formal logic (e.g., Anachronisms) and temporal consistency.
-
-**The Solution: Role-Based Cognitive Synergy**
-*   **Theoretical Basis:** *Unleashing Cognitive Synergy in Large Language Models* (2024).
-*   **Implementation:** Role-prompting acts as an attention masking mechanism, forcing the model to operate within a constrained latent space specialized for logic (Logician) or evidence (Researcher), ignoring extraneous noise.
+### 1.2 Addressing "Snowball Hallucinations"
+**The Problem:** LLMs suffer from *self-consistency hallucination*, where early errors cascade into fabricated narratives.
+**The Solution:** Modified Chain-of-Verification (CoVe).
+*   **Decoupling:** Based on *Dhuliawala et al. (2023)*, we separate **Plan Generation** from **Verification Execution**. Layer 1 (Decomposition) uses CoVe to extract atomic claims without verifying them, acting as the first "Safety Valve".
 
 ---
 
-## 2. Specialized Local Models & Performance Optimization
+## II. Architectural Logic & Model Selection
 
-To balance accuracy with computational cost, FailSafe employs a hybrid architecture combining LLMs with specialized Small Language Models (SLMs).
+FailSafe optimizes the **Accuracy-Cost-Latency** trade-off by offloading tasks to specialized local models.
 
-### 2.1. Contextual Disambiguation
-*   **Problem:** Coreference ambiguity (e.g., "He said" vs "Elon Musk said") degrades retrieval quality.
-*   **Solution:** **FastCoref** (DistilRoBERTa-based).
-*   **Rationale:** Benchmarked on OntoNotes 5.0, achieving an F1-score of ~81.5% with millisecond latency, offering superior cost-efficiency compared to LLM-based resolution.
+### 2.1 Contextual Disambiguation: `FastCoref`
+*   **Challenge:** Pronoun ambiguity (e.g., "He said") degrades retrieval precision.
+*   **Model:** **FastCoref** (DistilRoBERTa-based).
+*   **Justification:** Achieves **81.5% F1-score** on OntoNotes 5.0 benchmarks. Unlike multi-GB LLMs, FastCoref resolves coreferences in milliseconds, adhering to the principle of *Task Decomposition*.
 
-### 2.2. High-Performance Deduplication
-*   **Problem:** Redundant claims inflate verification costs.
-*   **Solution:** **Sentence-Transformers (all-MiniLM-L6-v2)**.
-*   **Rationale:** Optimized for batch inference (~14,200 sentences/sec). While larger models (e.g., e5-large) offer marginal accuracy gains, MiniLM provides the optimal trade-off for real-time interactivity.
+### 2.2 Vector Space Efficiency: `all-MiniLM-L6-v2` & `intfloat/e5-base-v2`
+*   **Challenge:** Real-time deduplication and caching require thousands of comparisons per second.
+*   **Model:** `all-MiniLM-L6-v2` (384d) for deduplication; `e5-base-v2` (768d) for semantic search.
+*   **Justification:**
+    *   **Speed:** MiniLM performs batch inference at **14,200 sentences/sec**.
+    *   **Cost:** 384-dimensional vectors reduce index size and RAM usage exponentially compared to 1024d+ vectors, while maintaining "Good Enough" MTEB scores for fact retrieval.
 
 ---
 
-## 3. Defense in Depth: Layered Methodology
+## III. The Pipeline: Defense in Depth
 
-### Layer 0: Statistical Screening (Early Exit)
-*   **Objective:** Zero-cost filtration of spam and clickbait.
-*   **Methodology:**
-    *   **Sensationalism Scoring:** Weighted analysis of uppercase ratio, emotive lexicon, and keyword stuffing (TF-IDF).
-    *   **Shannon Entropy Analysis:** Detection of machine-generated repetition or random noise compared against the *ag_news* benchmark.
-*   **Outcome:** High-trust, low-entropy inputs bypass expensive validation; low-trust, high-sensationalism inputs trigger an early exit.
+### Layer 0: Statistical Screening (The Zero-Cost Firewall)
+**Goal:** Reject spam/clickbait before expensive LLM inference (Early Exit).
+**Logic:** A weighted score (S) triggers hard rejection if high.
 
-### Layer 1: Structured Knowledge Extraction
-*   **Objective:** Convert unstructured text into a Structured Argumentation Graph (SAG).
-*   **Standard:** **JSON-LD**. Alignment with W3C Linked Data standards ensures interoperability.
-*   **Atomic Facts:** Adherence to *FActScore* (Min et al., 2023) principles, ensuring every node in the graph represents a single, verifiable Boolean statement.
+$$ Score = 1.5 \cdot R_{cap} + 3.0 \cdot S_{words} + 1.0 \cdot Z_{entropy} + 0.35 \cdot S_{TFIDF} $$
+
+1.  **$R_{cap}$ (Uppercase Ratio):** Detects "shouting" style ($R_{cap} = \frac{Caps}{TotalChars}$).
+2.  **$S_{words}$ (Sensationalism):** Frequency of emotive lexicon (e.g., "SHOCKING", "EXPOSED").
+3.  **$Z_{entropy}$ (Shannon Entropy):** Detects machine repetition or random noise.
+    *   $$ H(X) = - \sum p(x_i) \log p(x_i) $$
+    *   Normalized against *ag_news* baseline ($\mu \approx 4.5\text{-}6.0$ bits/word).
+4.  **$S_{TFIDF}$ (Keyword Stuffing):** Penalizes SEO spam.
+
+### Layer 1: Structured Decomposition (SAG)
+**Goal:** Convert linear text into a **Structured Argumentation Graph (SAG)** using **JSON-LD**.
+**Process:**
+1.  **Coreference Resolution:** Resolve "He" -> "Elon Musk".
+2.  **Decomposition (Atomic Facts):** Adhering to *FActScore* (Min et al., 2023), splitting complex sentences into binary verifiable units.
+3.  **Deduplication:** Merge claims if Cosine Similarity $S(u, v) > 0.85$.
 
 ### Layer 2: Semantic Caching
-*   **Objective:** Latency reduction via memory reuse.
-*   **Algorithm:** k-NN Search with Cosine Distance.
-    *   **Threshold:** $\tau \leq 0.2$ triggers a Cache Hit.
-    *   **Encoder:** `intfloat/e5-base-v2` (768d) for high-fidelity semantic mapping.
+**Goal:** $O(1)$ retrieval for previously verified facts.
+**Algorithm:** k-NN Search.
+*   **Metric:** Cosine Distance $d = 1 - \frac{A \cdot B}{\|A\|\|B\|}$.
+*   **Threshold:** If $d \leq 0.2$, trigger **CACHE HIT** (Return stored verdict). Else, **CACHE MISS** (Proceed to search).
 
 ### Layer 3: Hybrid Retrieval & Reranking
-*   **Objective:** Maximize recall and precision of external evidence.
-*   **Pipeline:**
-    1.  **Query Generation:** LLM-based query expansion to handle vocabulary mismatch.
-    2.  **Trust Filtering:** Pre-retrieval filtering based on domain credibility (MBFC database).
-    3.  **Neural Reranking:** Two-stage retrieval.
-        *   Stage 1 (Bi-Encoder): Fast retrieval of top-k candidates.
-        *   Stage 2 (Cross-Encoder): Deep semantic scoring ($Score(q,p) = \sigma(W \cdot BERT(q,p) + b)$) to select the definitive evidence context.
+**Goal:** Maximize Recall (Search) and Precision (Rerank).
+1.  **Query Generation:** LLM expands query to fix vocabulary mismatch.
+2.  **Trust Filtering:** Pre-fetch check against Media Bias/Fact Check (MBFC) database.
+    *   If $Trust(Source) < 0.5 \rightarrow$ Discard.
+3.  **Deep Scraping:** `Trafilatura` parses full DOM to remove boilerplate/ads.
+4.  **Neural Reranking (Cross-Encoder):**
+    *   Unlike Bi-Encoders, Cross-Encoders process (Query, Passage) simultaneously.
+    *   $$ Score(q, p) = \sigma(W \cdot BERT(q, [SEP], p) + b) $$
+    *   Selects Top-3 context window.
+
+### Layer 4 & 5: The Council & Synthesis
+**Layer 4 (Multi-Agent Debate):**
+*   The **Logician**, **Skeptic**, and **Researcher** debate the Atomic Claims against the Retrieved Evidence.
+*   **Causal Tracing:** If Claim A is refuted, child nodes relying on A are invalidated in the SAG.
+
+**Layer 5 (Executive Synthesis):**
+*   Aggregates votes and issues a specific verdict: **Supported**, **Refuted**, **Conflicting**, or **Unverified**.
+*   Generates a human-readable Investigation Report with precise citations.
 
 ---
 
-## 4. Conclusion
-
-FailSafe represents a shift from "Black Box" verification to a transparent, auditable, and theoretically grounded pipeline. By synthesizing verified architectural patterns (CoVe, Multi-Agent Debate, RAG) with rigorous engineering optimizations, it offers a robust defense against digital misinformation.
+## Conclusion
+FailSafe's architecture moves beyond simple RAG by enforcing rigorous statistical pre-filtering, structured argumentation, and multi-agent adversarial validation. This "Defense in Depth" approach ensures that resources are allocated efficiently while maintaining the highest standard of verification accuracy.

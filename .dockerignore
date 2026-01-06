@@ -1,0 +1,15 @@
+# .dockerignore
+__pycache__
+*.py[cod]
+*$py.class
+.git
+.gitignore
+.env
+venv/
+.venv/
+env/
+.idea/
+.vscode/
+chroma_db/
+chroma_db_data/
+*.log

@@ -1,9 +1,13 @@
+# docker-compose.yaml
+version: '3.8'
+
 services:
   redis:
     image: redis:7
     container_name: failsafe_redis
     ports:
       - "6379:6379"
+    restart: always
 
   chromadb:
     image: chromadb/chroma:latest
@@ -12,6 +16,9 @@ services:
       - "8000:8000"
     volumes:
       - chroma_data:/chroma/.chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+    restart: always
 
   web:
     build: .
@@ -23,6 +30,7 @@ services:
       - .env
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_BACKEND_URL=redis://redis:6379/0
       - CHROMA_MODE=server
       - CHROMA_HOST=chromadb
       - CHROMA_PORT=8000
@@ -31,7 +39,7 @@ services:
       - chromadb
     volumes:
       - ./data:/app/data
-      - .:/app 
+      - .:/app
       - ./data/cache:/root/.cache
 
   worker:
@@ -42,6 +50,7 @@ services:
       - .env
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_BACKEND_URL=redis://redis:6379/0
       - CHROMA_MODE=server
       - CHROMA_HOST=chromadb
       - CHROMA_PORT=8000
@@ -50,7 +59,7 @@ services:
       - chromadb
     volumes:
       - ./data:/app/data
-      - .:/app 
+      - .:/app
       - ./data/cache:/root/.cache
 
 volumes:

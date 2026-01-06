@@ -4,7 +4,7 @@ import sys
 import wikipediaapi
 from tqdm import tqdm
 from pathlib import Path
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))
