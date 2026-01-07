@@ -86,7 +86,7 @@ The system rejects processing if the input satisfies the logical AND condition:
 *   **File:** `factcheck/core/Screening.py` (Class `StylometryAnalyzer`)
 *   **Objective:** Detect "fake news style" via statistical linguistics without deep semantic parsing.
 *   **Scoring Formula:**
-    $$ Score = 1.5(R_{cap}) + 3.0(S_{words}) + 1.0(Z_{Entropy}) + 0.35(S_{TFIDF}) $$
+        $$ Score = 1.5(R_{cap}) + 3.0(S_{words}) + 1.0(Z_{Entropy}) + 0.35(S_{TFIDF}) $$
 
     *   **1. Uppercase Ratio ($R_{cap}$):** Detects "shouting" style.
         $$ R_{cap} = \frac{\text{Count(Uppercase)}}{\text{Count(Total Letters)}} $$
