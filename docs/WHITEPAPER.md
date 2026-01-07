@@ -26,6 +26,7 @@ FailSafe forces conflict between three distinct personas:
 2.  **The Researcher:** Provides raw data.
 3.  **The Skeptic:** Explicitly designed to suppress **"H-Neurons"**.
     *   *Reference:* **"H-Neurons: On the Existence, Impact, and Origin of Hallucination-Associated Neurons in LLMs" (Gao et al., Tsinghua University, 12/2025)**. This research found that specific neurons (<0.1%) are responsible for hallucinations. The "Skeptic" persona acts as a behavioral inhibition mechanism to suppress these neurons.
+    *   *Parsimony Integration:* The Skeptic operates on **Occam's Razor**, rejecting complex conspiracies in favor of simpler explanations.
 
 ### 2. The Problem: Snowball Hallucination
 **The Reality:** When an LLM makes a small error early in a generation, it tends to fabricate further details to rationalize that error (**Self-consistency hallucination**).
@@ -51,69 +52,153 @@ Assigning specific roles acts as **Attention Masking**, directing the model's fo
 
 ---
 
-## PART 2: SYSTEM OPTIMIZATION WITH SPECIALIZED LOCAL MODELS
+## PART 2: DETAILED TECHNICAL ARCHITECTURE (LAYERS 0-5)
 
-To solve the "Performance vs. Cost" dilemma, FailSafe integrates specialized Deep Learning models (SLMs) locally, avoiding the wastefulness of using LLMs for every micro-task.
+This section details the rigorous engineering implementation of FailSafe's "Defense in Depth" strategy, specifically isolating the Logic of each layer, the specialized models used, and the mathematical principles applied.
 
-### 1. Contextual Ambiguity from Coreferences
-**The Problem:** LLMs misinterpret "He", "It", "They" when sentences are extracted out of context.
-**Solution:** **FastCoref** (DistilRoBERTa-based).
-**Rationale:**
-*   **Performance:** OntoNotes 5.0 F1-score of **81.5%**.
-*   **Efficiency:** Processing text takes milliseconds. Using an LLM for this is computational overkill. This follows the **Task Decomposition** principle.
+### LAYER 0: THE STATISTICAL FIREWALL
+**Core Objective:** "Early Exit".
+The system rejects processing if the input satisfies the logical AND condition:
+`Source Trust == LOW` **AND** `Sensationalism Score > 0.5`.
 
-### 2. Performance of Semantic Search & Deduplication
-**The Problem:** The system must perform thousands of semantic comparisons per second for Deduplication (Layer 1) and Caching (Layer 2).
-**Solution:** **all-MiniLM-L6-v2** and **intfloat/e5-base-v2**.
-**Rationale:**
-*   **Speed is King:** MiniLM handles batch inference at **14,200 sentences/sec**.
-*   **Cost:** 384-dimensional vectors reduce RAM/CPU usage exponentially compared to 1024d+ vectors.
-*   **"Good Enough":** Based on **MTEB (Massive Text Embedding Benchmark)**, verified trade-offs show that a 5% accuracy gain from larger models is not worth a 10x latency penalty.
+#### Module A: Metadata Analysis (Source Integrity)
+*   **File:** `factcheck/core/Screening.py` (Class `MetadataAnalyzer`)
+*   **Workflow:**
+    1.  **Domain Extraction:** Regex parsing (e.g., `cnn.com` from URL).
+    2.  **Allow/Blocklist Check:** Immediate filtering for known government/educational sites (High Trust) or known phishing sites (Block).
+    3.  **O(1) Fast Lookup:** Queries local SQLite (`data/sources.db`) populated with *Media Bias/Fact Check (MBFC)* data.
+        *   `SELECT credibility, bias FROM sources WHERE domain = ?`
+    4.  **Fallback:** Calls Gemini Flash for on-the-fly evaluation if domain is unknown.
+*   **Output:** Trust Label (High, Mixed, Low).
 
-### 3. Objective Truth Measurement (Atomic Facts)
-**The Problem:** How do we measure if a claim is verifiable?
-**Solution:** **FActScore** (Min et al., 2023).
-**Application:** FailSafe defines an "Atomic Fact" as a binary unit of information (True/False). This concept acts as the API contract between the Decomposition Layer and the Verification Layer.
+#### Module B: The Screening Advisor (Semantic Memory)
+*   **File:** `factcheck/core/Screening.py` (Class `ScreeningAdvisor`)
+*   **Workflow:**
+    1.  **Vector Embedding:** Encodes input using `intfloat/e5-base-v2` into vector $V_{new}$ (768d).
+    2.  **Memory Query:** Compares $V_{new}$ against ChromaDB (containing previously verified fake news $V_{old}$).
+    3.  **Cosine Similarity Calculation:**
+        $$ Similarity = \cos(\theta) = \frac{V_{new} \cdot V_{old}}{\|V_{new}\| \|V_{old}\|} $$
+        *   Standard Threshold: Distance $< 0.5$.
+    4.  **Decision:** If Similarity $> 0.85$ (Distance $< 0.15$), the Advisor identifies an exact match to a known scam.
+*   **Action:** Immediate **SKIP**. Returns `FAKE` verdict.
 
-### 4. Noise Filtering (Reranking)
-**The Problem:** Search engines return top-10 results, but often only 1-2 are relevant.
-**Solution:** Two-Step Reranking.
-1.  **Bi-Encoder (MiniLM):** Fast Retrieval (High SCALL).
-2.  **Cross-Encoder:** Precise Reranking (High PRECISION).
-**Rationale:** Cross-Encoders (scoring Query-Passage pairs together) achieve MRR@10 of 0.39 on MS MARCO, significantly outperforming simple embeddings.
+#### Module C: Stylometry Analysis (Statistical Engine)
+*   **File:** `factcheck/core/Screening.py` (Class `StylometryAnalyzer`)
+*   **Objective:** Detect "fake news style" via statistical linguistics without deep semantic parsing.
+*   **Scoring Formula:**
+    $$ Score = 1.5(R_{cap}) + 3.0(S_{words}) + 1.0(Z_{Entropy}) + 0.35(S_{TFIDF}) $$
+
+    *   **1. Uppercase Ratio ($R_{cap}$):** Detects "shouting" style.
+        $$ R_{cap} = \frac{\text{Count(Uppercase)}}{\text{Count(Total Letters)}} $$
+    *   **2. Sensationalism ($S_{words}$):** Frequency of trigger words (e.g., "shocking", "exposed", "miracle"). Weighted highest (3.0).
+    *   **3. Shannon Entropy ($Z_{entropy}$):** Based on Information Theory to measure randomness.
+        $$ H(X) = - \sum p(x_i) \log_2 p(x_i) $$
+        *   **Z-Score Normalization:** Compares current entropy $H$ against the `ag_news` baseline mean ($\mu$) and std ($\sigma$).
+        $$ Z = \frac{H - \mu}{\sigma} $$
+    *   **4. Keyword Stuffing ($S_{TFIDF}$):** Uses TF-IDF to detect unnatural repetition of keywords common in SEO spam.
+
+**Logic Gate:**
+*   IF `Source == Unknown/Low` AND `Sensationalism > 0.5` $\to$ **EARLY EXIT**.
 
 ---
 
-## PART 3: DEFENSE IN DEPTH VIA STATISTICAL STYLOMETRY
+### LAYER 1: UNSTRUCTURED TO STRUCTURED (DECOMPOSITION)
+**Core Objective:** Convert raw text into structured **Atomic Claims** (JSON-LD) for logical processing.
 
-**The Goal:** A "Zero-Cost Early Exit" strategy to reject spam/clickbait before expensive inference.
+#### 1. Coreference Resolution
+*   **File:** `factcheck/core/Coreference.py` (Class `ReferenceResolver`)
+*   **Model:** **FastCoref** (DistilRoBERTa architecture).
+*   **Problem:** LLMs fail when extracting sentences with pronouns like "He" or "It" out of context.
+*   **Solution:** Cluster mentions (e.g., `{Elon Musk, CEO Tesla, He}`) and replace all mentions with the head entity.
+*   **Performance:** ~81.5% F1-Score (OntoNotes 5.0).
 
-### 1. Shannon Entropy (Information Theory)
-**Metric:** $H(X) = - \sum p(x) \log p(x)$
-**Rationale:** Spam and bot-generated text often exhibit low entropy (high repetitiveness). This is an objective, mathematical measure of text complexity independent of semantic bias.
+#### 2. SAG Construction (Structured Argumentation Graph)
+*   **File:** `factcheck/core/Decompose.py` (Class `Decompose`)
+*   **Engine:** Gemini Flash (CoVe Baseline).
+*   **Mapping:** $\Psi: D \to G(V, E)$
+*   **Standard:** **JSON-LD** (Linked Data).
+*   **Entities:** Nodes (Claims), Edges (Relationships: Support/Attack).
 
-### 2. TF-IDF & Benchmarking
-**Rationale:** By benchmarking input against the **ag_news** dataset (120k+ articles), we establish a baseline for "normal" journalistic writing.
-**Application:** Inputs triggering high "Keyword Stuffing" scores (via TF-IDF outliers) are flagged as SEO spam and rejected immediately.
+#### 3. Deduplication
+*   **File:** `factcheck/core/Decompose.py`
+*   **Model:** **all-MiniLM-L6-v2** (384d, 14,200 sentences/sec).
+*   **Algorithm:** Cosine Similarity on Claim Embeddings ($v_i, v_j$).
+    $$ S(i, j) = \cos(\theta) = \frac{v_i \cdot v_j}{\|v_i\| \|v_j\|} $$
+*   **Rule:** If $S > 0.85$, merge nodes to reduce verification cost.
 
 ---
 
-## PART 4: KNOWLEDGE REPRESENTATION (SAG)
+### LAYER 2: VERIFIABILITY & CACHING
+**Core Objective:** Check if the claim is factual (verifiable) and if it has been checked before.
 
-### 1. Limits of Linear Text
-**The Problem:** LLMs struggle to maintain logical consistency across long contexts (Linear processing).
-**Solution:** **Structured Argumentation Graph (SAG)** using **JSON-LD**.
-**Scientific Basis:** Argumentation Mining & Knowledge Graphs.
-**Application:**
-*   **JSON-LD:** W3C standard for Linked Data (compatible with Google/Bing).
-*   **Graph Logic:** Allows Causal Tracing. If Claim A (Support) is refuted, Claim B (Conclusion) collapses. This enables **Chain-of-Reasoning** that linear text cannot support.
+#### 1. Verifiability Check
+*   **Mapping:** $c_i \to y \in \{0, 1\}$
+    *   $y=1$: Fact (Verifiable). Proceed.
+    *   $y=0$: Opinion/Question. **DISCARD**.
 
-### 2. Semantic Similarity (Cosine Similarity)
-**Rationale:** Standard metric for vector space density.
-**Application:** Ensures that "The earth is round" and "Our planet is spherical" are treated as the same node in the SAG, preventing redundant verification cycles.
+#### 2. Semantic Mapping & Caching
+*   **Model:** `intfloat/e5-base-v2` (768d).
+*   **Query:** $k$-NN Search in ChromaDB (Collection: `verified_facts`).
+*   **Metric:** Cosine Distance ($d = 1 - Similarity$).
+*   **Threshold ($\tau$):** `0.2`.
+*   **Workflow:**
+    *   **Branch 1 (CACHE HIT, $d \le 0.2$):** Two claims are semantically identical. Return stored verdict immediately (~10ms latency).
+    *   **Branch 2 (CACHE MISS, $d > 0.2$):** Push claim to **Batch Processing Queue** (Batch size = 5) for Layer 3 processing.
+
+*   **Feedback Loop:** Verified results from L5 are fed back into L2 cache, enabling dynamic learning.
+
+---
+
+### LAYER 3: HYBRID RETRIEVAL & RERANKING
+**Core Objective:** Retrieve high-trust evidence with maximum Recall and Precision.
+
+#### 1. Query Generation
+*   **Goal:** Solve "Vocabulary Mismatch" (e.g., User: "Musk buys Blue Bird" vs Index: "Elon Musk acquires Twitter").
+*   **Output:** Generalized keyword set $\{q_1, q_2, \dots, q_k\}$.
+
+#### 2. Candidate Retrieval
+*   **Source:** Google Index (via Serper API).
+*   **Action:** Retrieve Top-K candidates (URLs).
+*   **Trust Filtering:**
+    *   Function $T(url) \in [0, 1]$.
+    *   If $T(url) < 0.5$ (Low MBFC score) $\to$ **Skip Deep Scraping** (Prevention of misinformation poisoning).
+
+#### 3. Deep Scraping
+*   **Lib:** `Trafilatura`.
+*   **Process:** Parse DOM Tree $\to$ Extract Main Text $\to$ Remove Noise (Ads, Nav).
+
+#### 4. Neural Reranking
+*   **Architecture:** **Cross-Encoder**.
+*   **Differentiation:** Unlike Bi-Encoders (L1/L2) which treat vectors independently, Cross-Encoders process (Query, Passage) pairs together.
+*   **Scoring:**
+    $$ Score(q, p) = \sigma(W \cdot BERT(q, p) + b) $$
+*   **Output:** Top-3 passages ($D_{sorted}$) selected as **Final Context**.
+
+---
+
+### LAYER 4: THE COUNCIL (MULTI-AGENT DEBATE)
+**Core Objective:** Surface truth via cognitive conflict.
+
+**Personas:**
+*   **The Logician:** Identifies fallacies and temporal inconsistencies.
+*   **The Skeptic:** "Devil's Advocate" - utilizes *Occam's Razor* to oppose conspiracy theories.
+*   **The Researcher:** Aligns claims with Layer 3 evidence.
+
+**Mechanism:** Agents debate iteratively based on the SAG structure. If a Parent Node ($A$) is refuted, all Child Nodes dependent on $A$ are invalidated (Causal Tracing).
+
+---
+
+### LAYER 5: EXECUTIVE SYNTHESIS
+**Core Objective:** Final adjudication.
+
+**Logic:**
+*   **Aggregation:** Weighted voting from Council members.
+*   **Hard Rules:**
+    *   High Refutation Ratio $\to$ **FALSE**.
+    *   Insufficient Evidence $\to$ **UNVERIFIED** (System refuses to guess).
+*   **Output:** Investigation Report containing Verdict, Citations, and Logic Trace.
 
 ---
 
 ## Conclusion
-FailSafe is not a patchwork of tools; it is a **systems engineering approach** to AI safety. By combining statistical rigour (Layer 0), specialized SLMs (Layer 1-3), and adversarial Agents (Layer 4), it creates a verification engine that is structurally resistant to the most common failures of modern Artificial Intelligence.
-
+FailSafe uses a "Systems Engineering" approach to AI safety. By combining solid statistical mathematics (Layer 0), optimized local models (Layers 1-2), and rigorous multi-agent logic (Layers 4-5), it creates a verification engine that is structurally immune to the common pitfalls of Sycophancy and Snowball Hallucinations.
