@@ -1,6 +1,5 @@
 ![Python](https://img.shields.io/badge/Python-3.9%2B-blue.svg?logo=python&logoColor=white)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-![Maintained](https://img.shields.io/badge/Maintained%3F-yes-green.svg)
 ![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)
 
 ![LangChain](https://img.shields.io/badge/LangChain-1C3C3C?style=flat&logo=LangChain&logoColor=white)
