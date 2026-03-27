@@ -1,7 +1,7 @@
 # FailSafe: A Multi-Agent Framework for Autonomous Fact-Verification using Structured Argumentation Graphs
 
 **Abstract**
-FailSafe is an autonomous "Epistemic Engine" designed to mitigate the fundamental failure modes of Large Language Models (LLMs)—specifically Hallucination, Sycophancy, and Logical Inconsistency. Unlike traditional RAG pipelines that prioritize retrieval recall, FailSafe prioritizes **epistemic integrity** through a "Defense in Depth" architecture. This whitepaper details the scientific basis, architectural decisions, and the "Expertocracy" consensus mechanism that powers the system.
+FailSafe is a tool designed to mitigate the fundamental failure modes of Large Language Models (LLMs)—specifically Hallucination, Sycophancy, and Logical Inconsistency. Unlike traditional RAG pipelines that prioritize retrieval recall, FailSafe prioritizes **epistemic integrity** through a "Defense in Depth" architecture. This whitepaper details the scientific basis, architectural decisions, and the "Expertocracy" consensus mechanism that powers the system.
 
 ---
 
