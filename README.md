@@ -147,9 +147,6 @@ See FailSafe in action with these real-world examples:
 
 We welcome contributions! Please see our [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-##  Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=Amin7410/FailSafe-AI-Powered-Fact-Checking-System&type=Date)](https://star-history.com/#Amin7410/FailSafe-AI-Powered-Fact-Checking-System&Date)
 
 ## Acknowledgements
 
